@@ -1,0 +1,152 @@
+---
+title: "hw3-8105"
+author: "Chenshuo Pan"
+date: "2023-10-07"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
+
+
+
+# Question1:
+
+```{r}
+#read dataset
+library(p8105.datasets)
+data("instacart")
+```
+
+**write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations.**
+
+This dataset has `r nrow(instacart)` rows and `r ncol(instacart)` columns ,The key variables include:`r names(instacart)`.
+
+(From the description of this data on the course website,we can describe the key variables as follows)
+
+`order_id`: order identifier
+
+`product_id`: product identifier
+
+`add_to_cart_order`: order in which each product was added to cart
+
+`reordered`: 1 if this prodcut has been ordered by this user in the past, 0 otherwise
+
+`user_id`: customer identifier
+
+`eval_set`: which evaluation set this order belongs in (Note that the data for use in this class is exclusively from the “train” eval_set)
+
+`order_number`: the order sequence number for this user (1=first, n=nth)
+
+`order_dow`: the day of the week on which the order was placed
+
+`order_hour_of_day`: the hour of the day on which the order was placed
+
+`days_since_prior_order`: days since the last order, capped at 30, NA if order_number=1
+
+`product_name`: name of the product
+
+`aisle_id`: aisle identifier
+
+`department_id`: department identifier
+
+`aisle`: the name of the aisle
+
+`department`: the name of the department
+
+
+```{r}
+#an example of observation data
+
+instacart%>%filter(user_id ==21)
+```
+
+Take user No. 21 as an example. This user purchased 6 products, 5 of which this customer has purchased in the past. The order number is 34, and the order date is 12 o'clock on Monday. It has been 28 days since this customer last placed an order. This data also includes information such as the type of product purchased by the customer, the department to which the product belongs, and the aisle.
+
+
+
+**How many aisles are there, and which aisles are the most items ordered from?**
+
+```{r}
+aisle_rank <-instacart%>%
+  group_by(aisle_id)%>%
+  summarise(aisle_number=n())%>%
+  arrange(desc(aisle_number))
+
+head(aisle_rank,1)
+```
+
+
+There are totally `r nrow(aisle_rank)` aisles, among those `aisle_id = 83` which is `r instacart%>%filter(aisle_id == 83)%>%head(1)%>%select(aisle) ` are the most items. The number is `r aisle_rank%>%select(aisle_number)%>%head(1)` 
+
+
+
+**Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.**
+
+```{r}
+#keep aisles with more than 10000 items
+
+instacart_10000 <- aisle_rank%>%
+  filter(aisle_number >= 10000)
+
+  
+instacart_10000%>%
+  mutate(aisle_id = reorder(aisle_id,desc(aisle_number)))%>%
+  ggplot(aes(x = aisle_id,y = aisle_number))+
+  geom_bar(stat = "identity")+
+  labs(title = "Number of items in each aisle",
+       x = "Aisle ID",
+       y = "Number of items in this aisle")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+
+**Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.**
+
+```{r}
+most3_item <- instacart %>%
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits"))%>%
+  group_by(aisle,product_name)%>%
+  summarise(product_number = n(),.groups = 'keep')%>%
+  arrange(aisle,desc(product_number))%>%
+  group_by(aisle)%>%
+  top_n(3,product_number)
+
+
+most3_item
+```
+
+
+
+**Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).**
+
+```{r}
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream"))%>%
+  group_by(product_name,order_dow)%>%
+  summarise(mean_hour = mean(order_hour_of_day),.groups = 'keep')%>%
+  mutate(order_dow = case_when(
+    order_dow == 0 ~ "Sunday",
+    order_dow == 1 ~ "Monday",
+    order_dow == 2 ~ "Tuesday",
+    order_dow == 3 ~ "Wednesday",
+    order_dow == 4 ~ "Thursday",
+    order_dow == 5 ~ "Friday",
+    order_dow == 6 ~ "Saturday",
+  ))%>%
+  pivot_wider(names_from = "order_dow",values_from = mean_hour)
+```
+
+
+
+
+
+
+
+
+
+
