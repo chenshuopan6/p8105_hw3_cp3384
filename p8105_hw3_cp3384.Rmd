@@ -1,13 +1,13 @@
 ---
 title: "hw3-8105"
 author: "Chenshuo Pan"
-date: "2023-10-07"
 output: github_document
 ---
 
 ```{r}
 library(tidyverse)
 library(ggplot2)
+library(patchwork)
 ```
 
 
@@ -192,9 +192,9 @@ brfss_2010
 ```
 
 
-There are totally `r nrow(bmfss_2002)` states were observed at 7 or more locations in 2002 .They are `r pull(bmfss_2002,state)`
+There are totally `r nrow(brfss_2002)` states were observed at 7 or more locations in 2002 .They are `r pull(brfss_2002,state)`
 
-There are totally `r nrow(bmfss_2010)` states were observed at 7 or more locations in 2010 .They are `r pull(bmfss_2010,state)`
+There are totally `r nrow(brfss_2010)` states were observed at 7 or more locations in 2010 .They are `r pull(brfss_2010,state)`
 
 
 
@@ -208,14 +208,56 @@ There are totally `r nrow(bmfss_2010)` states were observed at 7 or more locatio
 **Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
 
 ```{r}
-brfss_clean%>%
-  filter(response == "Excellent")
+state_response <- brfss_clean%>%
+  filter(response == "Excellent")%>%
+  group_by(year,state,state_county)%>%
+  summarise(average_value = mean(data_value),.groups = "keep")
+
+state_response%>%
+  group_by(year,state)%>%
+  summarise(year_value = mean(average_value),.groups = "keep")%>%
+  ggplot(aes(x = year,y = year_value,color = state,group = state))+
+  geom_line()+
+  labs(title = "spaghetti plot of average value over time within a state",
+       x = "Year",
+       y = "Yearly Data Value") 
+  #facet_grid(~state)
+
 ```
 
+Comment:
+
+
+**Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.**
+
+
+```{r}
+violin_2006<- brfss_clean%>%
+  filter(year==2006 | state == "NY") %>%
+  ggplot(aes(x = response, y = data_value))+
+  geom_violin(aes(fill = response))+
+  viridis::scale_fill_viridis(discrete = TRUE)
+
+violin_2010<- brfss_clean%>%
+  filter(year==2010 | state == "NY") %>%
+  ggplot(aes(x = response, y = data_value))+
+  geom_violin(aes(fill = response))+
+  viridis::scale_fill_viridis(discrete = TRUE)
+
+violin_2006 / violin_2010 
+```
+
+Comment:
+
+
+# Question3:
 
 
 
-Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+
+
+
 
 
 
