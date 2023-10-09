@@ -253,6 +253,105 @@ Comment:
 # Question3:
 
 
+```{r}
+covar <- read.csv("./data/nhanes_covar.csv",skip = 4,header = TRUE)
+accel <- read.csv("./data/nhanes_accel.csv",header = TRUE)
+```
+
+
+**Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).**
+
+```{r}
+covar_clean <- covar%>%
+  janitor::clean_names()%>%
+  mutate(sex = case_when(
+    sex == 1 ~ "male",
+    sex == 2 ~ "female"
+  ),
+  education = case_when(
+    education == 1 ~"Less than high school",
+    education == 2 ~"High school equivalent",
+    education == 3 ~"More than high school"
+  )) %>%
+  filter(age >=21)%>%
+  na.omit()
+
+
+
+accel_clean <- accel%>%
+  janitor::clean_names()
+
+```
+
+```{r}
+combine_table<-covar_clean%>%
+  inner_join(accel_clean,by = "seqn")%>%
+  pivot_longer(min1:min1440,names_to = "time", values_to = "mims")%>%
+  na.omit()
+```
+
+**Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.**
+```{r}
+combine_table%>%
+  group_by(education,sex)%>%
+  summarise(n=n())
+
+
+
+#age value only in covar
+covar_clean%>%
+  ggplot(aes(x = age , fill = sex,))+
+  geom_density(alpha = 0.5)+
+  facet_grid(~education)+ 
+  viridis::scale_fill_viridis(discrete = TRUE)
+  
+```
+Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+
+```{r}
+combine_table%>%
+  group_by(sex,age,education,seqn)%>%
+  summarise(total = sum(mims))%>%
+  ggplot(aes(x = age , y = total,color = sex))+
+  geom_point(alpha = 0.5)+
+  geom_smooth(se = FALSE)+
+  facet_grid(.~education)
+```
+
+
+
+
+
+Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+
+
+```{r}
+as.data.frame(combine_table%>%
+  filter(education == "Less than high school")%>%
+  group_by(sex,time)%>%
+  summarise(mean_min = mean(mims),.groups = 'keep')%>%
+  apply(2,function(time) gsub("min", "", time)))%>%
+  mutate(time = as.numeric(time))%>%
+  arrange(time)%>%
+  ggplot(aes(x = time, y = mean_min,color = sex ))+
+  geom_point()+
+  scale_y_discrete(breaks = c(0, 20, 40, 60,80,100))+
+  theme_minimal()+
+  labs(title = "Number of items in each aisle",
+       x = "Aisle ID",
+       y = "Number of items in this aisle")
+```
+
+
+
+```{r}
+
+```
+
+
+
+
 
 
 
