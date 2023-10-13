@@ -4,10 +4,20 @@ author: "Chenshuo Pan"
 output: github_document
 ---
 
-```{r}
+```{r,include=FALSE}
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+
 ```
 
 
@@ -75,6 +85,7 @@ aisle_rank <-instacart%>%
   summarise(aisle_number=n())%>%
   arrange(desc(aisle_number))
 
+#show the most items aisle id
 head(aisle_rank,1)
 ```
 
@@ -93,13 +104,14 @@ instacart_10000 <- aisle_rank%>%
 
   
 instacart_10000%>%
-  mutate(aisle_id = reorder(aisle_id,desc(aisle_number)))%>%
+  mutate(aisle_id = reorder(aisle_id,aisle_number))%>%
   ggplot(aes(x = aisle_id,y = aisle_number))+
-  geom_bar(stat = "identity")+
+  geom_point(stat = "identity")+
   labs(title = "Number of items in each aisle",
        x = "Aisle ID",
        y = "Number of items in this aisle")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  theme_minimal()
 ```
 
 
@@ -108,6 +120,7 @@ instacart_10000%>%
 **Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.**
 
 ```{r}
+#choose most 3 items in specified aisles
 most3_item <- instacart %>%
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits"))%>%
   group_by(aisle,product_name)%>%
@@ -125,6 +138,7 @@ most3_item
 **Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).**
 
 ```{r}
+#using group_by to help us calculate the mean hour of the day,then create table
 instacart %>%
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream"))%>%
   group_by(product_name,order_dow)%>%
@@ -148,6 +162,7 @@ instacart %>%
 
 
 ```{r}
+#read dataset
 data("brfss_smart2010")
 ```
 
@@ -159,32 +174,42 @@ data("brfss_smart2010")
 **organize responses as a factor taking levels ordered from “Poor” to “Excellent”**
 
 ```{r}
+#clean dataset
 brfss_clean <- brfss_smart2010%>%
+#clean column names,and rename them reasonablely
   janitor::clean_names()%>%
   rename(state = locationabbr,state_county = locationdesc) %>%
+#focus on Overall Health topic and keep the required response
   filter(topic == "Overall Health") %>%
   filter(response %in% c("Excellent", "Very good", "Good", "Fair", "Poor"))%>%
+#convert respnse to factor
   mutate(response = factor(response,
-         levels = c("Excellent", "Very good", "Good", "Fair", "Poor")))
+         levels = c("Poor", "Fair", "Good", "Very good", "Excellent")))
 ```
 
 
-
+After cleaning the data as required, we renamed the `locationabbr` column to `state`, and changed `locationdesc` to `state_county`. I think this naming makes it more intuitive to understand the content of each column. Finally we got the data set of `r ncol(brfss_clean)` columns, `r nrow(brfss_clean)` observations.
 
 **In 2002, which states were observed at 7 or more locations? What about in 2010?**
 
 ```{r}
+#select observations we want
 brfss_2002 <- brfss_clean %>%
+#select 2002 data
   filter(year == 2002)%>%
   group_by(state)%>%
+#calculate how many locations in each unique county in 2002
   summarise(n=length(unique(state_county)))%>%
+#keep those with more than 7 locations
   filter(n >= 7)
 
 brfss_2002
 
 brfss_2010 <- brfss_clean %>%
+#select 2010 data
   filter(year == 2010)%>%
   group_by(state)%>%
+#calculate how many locations in each unique county in 2010
   summarise(n=length(unique(state_county)))%>%
   filter(n >= 7)
 
@@ -208,52 +233,78 @@ There are totally `r nrow(brfss_2010)` states were observed at 7 or more locatio
 **Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).**
 
 ```{r}
+#Construct a dataset that is limited to Excellent responses,and calculate average value
 state_response <- brfss_clean%>%
+#choose those lines whose response is excellent
   filter(response == "Excellent")%>%
   group_by(year,state,state_county)%>%
+#calculate the mean by group
   summarise(average_value = mean(data_value),.groups = "keep")
 
-state_response%>%
+state_response
+
+#draw spaghetti plot
+
+spaghetti_plot <- state_response%>%
   group_by(year,state)%>%
+  #calculate the average value of each year and state
   summarise(year_value = mean(average_value),.groups = "keep")%>%
   ggplot(aes(x = year,y = year_value,color = state,group = state))+
+  #spaghetti plot
   geom_line()+
   labs(title = "spaghetti plot of average value over time within a state",
        x = "Year",
        y = "Yearly Data Value") 
-  #facet_grid(~state)
+
+spaghetti_plot
 
 ```
 
-Comment:
+Comment: I noticed that overall during the period 2002-2010, there was no obvious upward or downward trend in the average values of different states. But there are some details worth noting. For example, from 2004 to 2005, basically all states experienced a significant decline in the average value for that year. At the same time, the average values vary greatly between different states. The average value of DC is always higher than that of other states, and the average value of WV is the lowest most of the time.
 
 
 **Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.**
 
 
-```{r}
+```{r,warning=FALSE}
+# draw violin plot for the years 2006, and 2010, distribution of data_value for responses
+
+
 violin_2006<- brfss_clean%>%
+#choose those data that year is 2006 and state is NY
   filter(year==2006 | state == "NY") %>%
+#set response to x ,data_value to y
   ggplot(aes(x = response, y = data_value))+
   geom_violin(aes(fill = response))+
-  viridis::scale_fill_viridis(discrete = TRUE)
+  viridis::scale_fill_viridis(discrete = TRUE)+
+  labs(title = "Distribution of responses by location in New York State, 2006",
+       x = "Response",
+       y = "Data value")+
+  theme_minimal()
 
 violin_2010<- brfss_clean%>%
+#choose those data that year is 2010 and state is NY
   filter(year==2010 | state == "NY") %>%
+#set response to x ,data_value to y
   ggplot(aes(x = response, y = data_value))+
   geom_violin(aes(fill = response))+
-  viridis::scale_fill_viridis(discrete = TRUE)
+  viridis::scale_fill_viridis(discrete = TRUE)+
+  labs(title = "Distribution of responses by location in New York State, 2010",
+       x = "Response",
+       y = "Data value")+
+  theme_minimal()
 
 violin_2006 / violin_2010 
 ```
 
-Comment:
+Comment: First, compare the overall distribution of 2006 and 2010. There is no obvious distribution difference between the two pictures, so they are similar. Judging from the average value and shape of each violin plot, the average value corresponding to `poor` is the lowest, and the graph of poor is very wide, which proves that a large amount of data is concentrated in the interval around 5. The highest average value is for `very good` rather than `excellent`, which is surprising, and the other average values are sorted according to the meaning of their categories.
 
 
 # Question3:
 
 
 ```{r}
+#Read csv dataset
 covar <- read.csv("./data/nhanes_covar.csv",skip = 4,header = TRUE)
 accel <- read.csv("./data/nhanes_accel.csv",header = TRUE)
 ```
@@ -262,94 +313,136 @@ accel <- read.csv("./data/nhanes_accel.csv",header = TRUE)
 **Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).**
 
 ```{r}
+#clean covar dataset
 covar_clean <- covar%>%
+#clean column names
   janitor::clean_names()%>%
-  mutate(sex = case_when(
+#convert sex variables to factor with 2 levels
+  mutate(sex = factor(case_when(
     sex == 1 ~ "male",
     sex == 2 ~ "female"
-  ),
-  education = case_when(
+  )),
+#convert education variables to factor with 3 levels
+  education = factor(case_when(
     education == 1 ~"Less than high school",
     education == 2 ~"High school equivalent",
     education == 3 ~"More than high school"
-  )) %>%
+  ),levels = c("Less than high school","High school equivalent","More than high school"))) %>%
+#keep data with age greater and equal than 21 and delete NA
   filter(age >=21)%>%
   na.omit()
 
 
-
+#clean accel dataset
 accel_clean <- accel%>%
   janitor::clean_names()
 
 ```
 
 ```{r}
+#combine accel and covar table
 combine_table<-covar_clean%>%
+#using inner join to make sure the dataset we created can satisfy the requirements
   inner_join(accel_clean,by = "seqn")%>%
+#convert into a long table
   pivot_longer(min1:min1440,names_to = "time", values_to = "mims")%>%
   na.omit()
 ```
 
 **Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.**
-```{r}
-combine_table%>%
+```{r,warning=FALSE}
+
+#table for the number of men and women in each education category
+age_distribution_table <- combine_table%>%
+  select(seqn,sex,age,education)%>%
   group_by(education,sex)%>%
-  summarise(n=n())
+#using unique() to make sure each seqn(paticipants) only appear once
+  unique()%>%
+#summarize the number ,mean age of people in each education level
+#mean age used for analysis later
+  summarise(number_of_people=n(),mean_age = mean(age),median_age = median(age))
 
+#show table
+age_distribution_table
 
-
-#age value only in covar
-covar_clean%>%
+#age value only in covar ,so we use covar_clean dataset to plot
+age_distribution_plot <- covar_clean%>%
   ggplot(aes(x = age , fill = sex,))+
+#draw a density plot
   geom_density(alpha = 0.5)+
+#divide into different plot according to education level
   facet_grid(~education)+ 
-  viridis::scale_fill_viridis(discrete = TRUE)
+  viridis::scale_fill_viridis(discrete = TRUE)+
+  labs(title = "Density plot of age distribution at different education levels",
+       x = "Age",
+       y = "Density")+
+  theme_minimal()
+
+#show plot
+age_distribution_plot
+
   
 ```
-Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+Comment: Combining the density plot and the information about the median and mean that I gave in the table, we can find that in the group of Less than high school, the values of men and women are similar, and the distribution of the data is also similar. In the High school equivalent group, the average age of men is significantly younger than that of women. It can be seen from the density map that women at this level are mainly aged after 60, while there are significantly more men in younger age groups than women. Finally, in the More than high school group, the average age of women is lower than that of men. It can also be seen from the figure that most women with this education level are around 30 years old.
+
+
+
+
+**Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.**
 
 
 ```{r}
-combine_table%>%
+#plot total activities (y-axis) against age (x-axis)
+daily_activity_plot <- combine_table%>%
   group_by(sex,age,education,seqn)%>%
+#Calculate total daily activity based on factors such as age, education level, etc.
   summarise(total = sum(mims))%>%
   ggplot(aes(x = age , y = total,color = sex))+
   geom_point(alpha = 0.5)+
+#add a trend line 
   geom_smooth(se = FALSE)+
-  facet_grid(.~education)
+#Plotted separately according to different education levels
+  facet_grid(.~education)+
+  labs(title = "Scatter plot of total daily physical activity by age",
+       x = "Age",
+       y = "Total Physical activity per day")+
+  theme_minimal()
+
+
+daily_activity_plot
 ```
 
+Comment: Although total activity fluctuates somewhat with age, overall activity decreases with age (for all education levels and genders). It can be seen from the `smmoth` curve that at the education level of Less than high school, men’s total activity after the age of 40 is greater than that of women. For the two education levels of High school equivalent and More than high school, the total activity volume of women is always higher than that of men.
 
 
 
-
-Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+**Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.**
 
 
 ```{r}
-as.data.frame(combine_table%>%
-  filter(education == "Less than high school")%>%
-  group_by(sex,time)%>%
-  summarise(mean_min = mean(mims),.groups = 'keep')%>%
-  apply(2,function(time) gsub("min", "", time)))%>%
-  mutate(time = as.numeric(time))%>%
+#Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex.
+
+mins_plot <- combine_table%>%
+#using gsub to delete the min words in each time variables, and then convert them to numeric
+  mutate(time = as.numeric(gsub("min", "", time)))%>%
   arrange(time)%>%
-  ggplot(aes(x = time, y = mean_min,color = sex ))+
-  geom_point()+
-  scale_y_discrete(breaks = c(0, 20, 40, 60,80,100))+
+  ggplot(aes(x = time, y = mims,color = sex ))+
+  geom_point(alpha = 0.5)+
+#Plotted separately according to different education levels
+  facet_wrap(~ education)+
+#add a trend line
+  geom_smooth(se = FALSE) +
+  labs(title = "Scatter plot of mims for different education levels of the day",
+       x = "every minute of the day",
+       y = "MiMs value")+
   theme_minimal()+
-  labs(title = "Number of items in each aisle",
-       x = "Aisle ID",
-       y = "Number of items in this aisle")
+  viridis::scale_color_viridis(discrete = TRUE)
+
+
+mins_plot
 ```
 
-
-
-```{r}
-
-```
-
-
+Comment: Although it is difficult to obtain valid information from the scatter plot, the smooth curve I constructed shows that men and women perform similarly at three different levels of education. In other words, gender and education level have no significant impact on people's physical activity throughout the day.
 
 
 
