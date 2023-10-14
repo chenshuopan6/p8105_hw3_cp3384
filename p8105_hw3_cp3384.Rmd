@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   out.width = "90%"
 )
 
-
+options(dplyr.summarise.inform = FALSE)
 ```
 
 
@@ -113,7 +113,7 @@ instacart_10000%>%
   theme(axis.text.x = element_text(angle = 60, hjust = 1))+
   theme_minimal()
 ```
-
+Here are the images arranged from small to large according to the number of items according to Aisle ID.
 
 
 
@@ -132,7 +132,7 @@ most3_item <- instacart %>%
 
 most3_item
 ```
-
+First, select three specified aisles, calculate the quantity of each of them, group each aisle again, and use top_n to calculate the three largest products among them.
 
 
 **Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).**
@@ -154,7 +154,7 @@ instacart %>%
   ))%>%
   pivot_wider(names_from = "order_dow",values_from = mean_hour)
 ```
-
+It can be seen that except for Friday, Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream. The data in the table is time
 
 
 
@@ -268,36 +268,25 @@ Comment: I noticed that overall during the period 2002-2010, there was no obviou
 
 ```{r,warning=FALSE}
 # draw violin plot for the years 2006, and 2010, distribution of data_value for responses
-
-
-violin_2006<- brfss_clean%>%
-#choose those data that year is 2006 and state is NY
-  filter(year==2006 | state == "NY") %>%
-#set response to x ,data_value to y
-  ggplot(aes(x = response, y = data_value))+
-  geom_violin(aes(fill = response))+
-  viridis::scale_fill_viridis(discrete = TRUE)+
-  labs(title = "Distribution of responses by location in New York State, 2006",
-       x = "Response",
-       y = "Data value")+
-  theme_minimal()
-
-violin_2010<- brfss_clean%>%
+violin_plot <-brfss_clean%>%
 #choose those data that year is 2010 and state is NY
-  filter(year==2010 | state == "NY") %>%
+  filter((year==2010| year == 2006) & state == "NY") %>%
 #set response to x ,data_value to y
   ggplot(aes(x = response, y = data_value))+
   geom_violin(aes(fill = response))+
+#create panel according to years
+  facet_wrap(~year, nrow = 2)+
   viridis::scale_fill_viridis(discrete = TRUE)+
-  labs(title = "Distribution of responses by location in New York State, 2010",
+  labs(title = "Distribution of responses by location in New York State for year 2006 and 2010",
        x = "Response",
        y = "Data value")+
-  theme_minimal()
+  theme_minimal()+
+  theme(legend.position = 'none')
 
-violin_2006 / violin_2010 
+violin_plot
 ```
 
-Comment: First, compare the overall distribution of 2006 and 2010. There is no obvious distribution difference between the two pictures, so they are similar. Judging from the average value and shape of each violin plot, the average value corresponding to `poor` is the lowest, and the graph of poor is very wide, which proves that a large amount of data is concentrated in the interval around 5. The highest average value is for `very good` rather than `excellent`, which is surprising, and the other average values are sorted according to the meaning of their categories.
+Comment: First, compare the overall distribution of 2006 and 2010. There is no obvious distribution difference between the two pictures, so they are similar. Judging from the average value and shape of each violin plot, the average value corresponding to `poor` is the lowest, and the graph of poor is very wide, which proves that a large amount of data is concentrated in the interval around 5. The highest average value is for `very good` rather than `excellent`(It is determined by the numerical value and shape of the distribution.), which is surprising.Except excellent ,the other average values are sorted according to the meaning of their categories(like Good > Fair >Poor).
 
 
 # Question3:
@@ -347,10 +336,17 @@ combine_table<-covar_clean%>%
 #convert into a long table
   pivot_longer(min1:min1440,names_to = "time", values_to = "mims")%>%
   na.omit()
+
+
+#show some of combined table
+
+head(combine_table,5)
 ```
+I first process the two data sets separately and then merge them.Because we want to exclude data from participants with missing demographic data, I use inner_join to ensure that the generated data is complete for each item, and `na.omit` again to ensure that no missing data exists
+
 
 **Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.**
-```{r,warning=FALSE}
+```{r,dplyr.summarise.inform = FALSE}
 
 #table for the number of men and women in each education category
 age_distribution_table <- combine_table%>%
@@ -391,7 +387,7 @@ Comment: Combining the density plot and the information about the median and mea
 **Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.**
 
 
-```{r}
+```{r,dplyr.summarise.inform = FALSE}
 #plot total activities (y-axis) against age (x-axis)
 daily_activity_plot <- combine_table%>%
   group_by(sex,age,education,seqn)%>%
@@ -419,7 +415,7 @@ Comment: Although total activity fluctuates somewhat with age, overall activity 
 **Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.**
 
 
-```{r}
+```{r,dplyr.summarise.inform = FALSE}
 #Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex.
 
 mins_plot <- combine_table%>%
